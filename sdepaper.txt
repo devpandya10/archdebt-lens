@@ -1,0 +1,1426 @@
+Tracing the Lifecycle of Architecture Technical
+Debt in Software Systems: A Dependency Approach
+Edi Sutoyo∗† , Paris Avgeriou∗ , Andrea Capiluppi∗
+∗ Bernoulli Institute, University of Groningen, Groningen, The Netherlands
+† Department of Information Systems, Telkom University, Bandung, Indonesia
+arXiv:2501.15387v2 [cs.SE] 7 Mar 2025
+Email: {e.sutoyo, p.avgeriou, a.capiluppi}@rug.nl
+Abstract—Architectural technical debt (ATD) represents trade-
+offs in software architecture that accelerate initial development
+but create long-term maintenance challenges. ATD, in particular
+when self-admitted, impacts the foundational structure of soft-
+ware, making it difficult to detect and resolve.
+This study investigates the lifecycle of ATD, focusing on how
+it affects i) the connectivity between classes and ii) the frequency
+of file modifications. We aim to understand how ATD evolves
+from introduction to repayment and its implications on software
+architectures.
+Our empirical approach was applied to a dataset of SATD
+items extracted from various software artifacts. We isolated ATD
+instances, filtered for architectural indicators, and calculated
+dependencies at different lifecycle stages using FAN-IN and FAN-
+OUT metrics. Statistical analyses, including the Mann-Whitney
+U test and Cliff’s Delta, were used to assess the significance and
+effect size of connectivity and dependency changes over time.
+We observed that ATD repayment increased class connectivity,
+with FAN-IN increasing by 57.5% on average and FAN-OUT by
+26.7%, suggesting a shift toward centralization and increased
+architectural complexity after repayment. Moreover, ATD files
+were modified less frequently than Non-ATD files, with changes
+accumulated in high-dependency portions of the code.
+Our study shows that resolving ATD improves software quality
+in the short-term, but can make the architecture more complex
+by centralizing dependencies. Also, even if dependency metrics
+(like FAN-IN and FAN-OUT) can help understand the impact of
+ATD, they should be combined with other measures to capture
+other effects of ATD on software maintainability.
+Index Terms—Architecture technical debt, Self-admitted tech-
+nical debt, Dependency analysis, Software architecture mainte-
+nance, Software complexity metrics, FAN-IN and FAN-OUT
+I. I NTRODUCTION
+The technical debt (TD) metaphor in software development
+refers to compromises made to meet short-term goals that
+may detract from the long-term health and maintainability
+of software systems [1], [2]. A specific form of TD is self-
+admitted technical debt (SATD), where developers consciously
+make such compromises due to constraints such as time or
+resource limitations [3]. These compromises, often directly
+expressed in natural language through textual artifacts [4],
+allow developers to acknowledge areas of the software that
+require future improvement [5]. Understanding the lifecycle
+of SATD is crucial for managing its impact on software
+project health [6]. This is particularly the case for architecture
+technical debt (ATD).
+ATD represents trade-offs in the architectural design de-
+cisions of software systems, such as technology choices or
+application of architecture patterns [7]. Unlike other types of
+debt, ATD affects the core structure and behavior of software,
+making it difficult to detect and resolve without substantial
+development effort. This unique impact of ATD has been
+highlighted in several studies. For instance, Besker et al. [8]
+found that ATD had the highest negative impact on daily
+software activities, while Lenarduzzi et al. [9] underscored the
+high cost and risk associated with managing ATD compared
+to other TD types.
+Detecting ATD remains a significant challenge due to its
+complexity and nuanced presence within software architec-
+tures. This difficulty is underscored by a recent study by
+Li et al. [10], which identified only 116 ATD items out of
+8,812 technical debt instances across various artifacts—ATD
+accounted for a mere 0.13% of the total debt items. Moreover,
+we independently validated these ATD items and included only
+those that all authors consistently labeled as true positives.
+This process revealed that only 57 of the 116 ATD items were
+correctly identified as true ATD, highlighting the challenges
+in reliably detecting and classifying architectural debt. These
+findings emphasize the need for more targeted methods to
+capture the unique aspects of ATD.
+While Tan et al. [6] have explored the lifecycle of various
+types of technical debt by combining data from issue trackers
+and source code repositories, their broad approach did not
+address the specific challenges associated with ATD. Although
+their study provides valuable insights into how technical debt
+is reported, discussed, and resolved, it overlooks the analysis
+of specific files within the repository and the dependencies
+among files associated with particular commits.
+Unlike code-level technical debt, which often manifests in
+clear, tangible issues such as poor naming or code duplication
+[11], ATD operates at the high-level design and structure of the
+software [12]. It is inherently more abstract, often embedded
+in architectural decisions and dependency relationships. More-
+over, ATD does not always produce immediate symptoms,
+such as failing tests or runtime errors. Instead, its impact (such
+as reduced scalability or maintainability) typically becomes
+evident only as the system evolves or scales.
+Despite prior efforts to analyze TD, the unique challenges of
+detecting and resolving ATD remain complex [13]. Existing
+tools often focus on high-level indicators of TD [14], [15]
+without capturing the deeper structural dependencies impacted
+by ATD. As a result, software engineers face difficulty predict-ing the long-term impact of ATD on system maintainability
+and architectural stability. This paper addresses this gap by
+focusing on the lifecycle of ATD, applying dependency metrics
+to provide actionable insights into its evolution and impact.
+Given the unique challenges posed by ATD, conducting a
+dependency analysis of specific files within a repository and
+examining dependencies associated with particular commits
+can offer essential insights that general TD analysis methods
+may miss. Software systems are typically composed of inter-
+dependent components [16], and the propagation of ATD can
+lead to complex, cascading effects across these dependencies.
+By not considering these dependencies, prior studies may
+overlook significant architectural impacts of ATD, leading to
+an incomplete understanding of its lifecycle and effects on
+system quality.
+Dependency analysis, particularly class connectivity through
+metrics like FAN-IN and FAN-OUT, is crucial for under-
+standing the propagation and concentration of ATD within a
+software architecture [17]. FAN-IN measures the number of
+modules or files that depend on a specific file, while FAN-
+OUT tracks how many other modules or files a particular file
+depends upon [18]. High FAN-IN values indicate critical files
+that serve as central nodes in the software [19], making them
+potential hotspots for ATD accumulation, as technical debt in
+these files may cascade to dependent modules. Similarly, high
+FAN-OUT values suggest files with extensive dependencies
+[20], which could signify complex modules that are difficult to
+understand and maintain [21] and are more frequently targeted
+for refactoring than low-coupled classes [18].
+The key contributions of this paper are the following:
+1) An investigation into the lifecycle management of ATD
+through dependency analysis, addressing how ATD
+items evolve within a software architecture.
+2) Demonstration of the utility of FAN-IN and FAN-OUT
+metrics in analyzing the structural evolution of soft-
+ware systems, providing insights into how architectural
+changes influence connectivity and complexity.
+3) A comprehensive comparison of ATD and Non-ATD
+items, showcasing differences in dependency structures,
+modification frequencies, and their correlation with com-
+plexity over time.
+This study is organized as follows: Section II introduces
+the background, while Section III describes the study design.
+Section IV, V, and VI present and elaborate on the results for
+a worked example, RQ1 and RQ2, respectively. Meanwhile,
+Section VII discusses these findings. Finally, Section VIII
+provides a conclusion and outlines future work.
+II. BACKGROUND
+This section divides our background into two parts: archi-
+tecture technical debt and FAN-IN and FAN-OUT metrics.
+A. Architecture Technical Debt (ATD)
+Alves et al. [22] categorized 13 types of TD and their indica-
+tors, including architecture technical debt (ATD). They defined
+ATD as issues arising in the software architecture, identifying
+structure dependencies/analysis, and violation of modularity
+as key indicators. Subsequently, Li et al. [23] refined the
+debt types and indicators of TD from the previous framework
+[22]. To make this article self-contained, the definition of
+ATD indicators based on that framework can be described as
+follows:
+• Violation of modularity (VioMod) occurs when multiple
+modules become interdependent instead of remaining
+independent.
+• Using obsolete technology (ObsTech) indicates cases
+where architecturally-significant technologies have be-
+come obsolete.
+B. FAN-IN and FAN-OUT Metrics
+VioMod can lead to increased coupling within the system.
+One effective way to assess and quantify these violations is
+through the use of FAN-IN and FAN-OUT metrics, which
+act as proxies for identifying the degree of coupling be-
+tween classes. Specifically, FAN-IN measures how many other
+classes depend on a given class, while FAN-OUT quantifies
+how many classes a given class depends upon [18].
+The impact of coupling on TD is particularly significant in
+architectural contexts. Studies have shown that high coupling,
+particularly in core architectural components, can lead to
+increased defect-related maintenance costs and lower system
+stability. For instance, tightly coupled core components are
+often more expensive to maintain than loosely coupled ones,
+indicating that refactoring efforts should prioritize these areas
+to reduce debt [24].
+In their study, Murgia et al. [18] examined the relationship
+between refactoring practices and class coupling, specifically
+through FAN-IN and FAN-OUT metrics, across four open-
+source systems. They revealed that highly coupled classes, es-
+pecially those with significant FAN-OUT, are more frequently
+targeted for refactoring than low-coupled classes. Similarly,
+Imran [25] investigated parameter-based refactoring and its
+impact on software coupling, specifically in terms of FAN-
+IN and FAN-OUT metrics. By focusing on modifications that
+adjust method parameters, the study highlighted how refactor-
+ing can reduce coupling in highly interdependent classes.
+In addition, FAN-IN and FAN-OUT metrics provide deeper
+insights into program dependencies by capturing runtime in-
+teractions, which can more accurately reflect the real coupling
+levels in complex systems [26]. Beyond the scope of individual
+classes, high FAN-IN and FAN-OUT across all modules
+involved in the execution paths of an activity indicate a broader
+dependency impact, significantly reducing the evolvability
+of an activity and its application, thus reflecting a greater
+magnitude of TD [27].
+III. S TUDY D ESIGN
+This section details the process of selecting and analyzing
+ATD from an existing dataset provided by Li et al. [10]. The
+overall approach is articulated in the following steps:
+Dataset overview – In their recent study on SATD, Li
+et al. [10] released an extensive dataset aimed at automatedTABLE I
+DATASET FROM L I ET AL . [10]
+SATD TypeCCISPSCM
+C/D
+DOC
+TEST
+REQ
+DEFECT
+ATD
+BUILD2,703
+54
+85
+757
+472
+-
+-2,169
+487
+338
+97
+25
+93
+67510
+101
+68
+20
+1
+10
+8522
+98
+58
+27
+-
+13
+29
+Non-Debt58,67619,90442,824,253
+SATD detection (see Table I). The dataset consists of 4
+different software artifacts across 103 Apache OSS projects.
+It includes 5k commit messages (CM) and 5k pull requests
+section (PS). It also contains 23k issues section (IS) obtained
+from their previous study [28]. Each instance is categorized by
+type: code/design (C/D), requirement (REQ), documentation
+(DOC), test (TEST), defect (DEFECT), build (BUILD), archi-
+tecture (ATD) debt, and Non-Debt. Finally, the dataset includes
+62k code comments (CC) from a dataset by Maldonado et al.
+[5], annotated with specific types of SATD, such as design,
+requirement, documentation, and test debt.
+Selection of ATD items – Our research focuses exclusively
+on datasets that include ATD (highlighted with the gray
+color in Table I). Thus, only data from commit messages,
+issue sections, and pull requests are used, as ATD items are
+unavailable in source code comments.
+Table II presents the ATD dataset filtering process based on
+Li et al. [10]. Initially, this dataset contained 4,071 CC, 3,276
+IS, 718 PS, and 747 CM identified as potential SATD sources.
+From this dataset, we focused on ATD items, selecting 93 from
+IS, 10 from PS, and 13 from CM, resulting in a total of 116
+ATD items. The numbers in parentheses indicate the initial
+number of ATD items identified from each artifact.
+TABLE II
+ATD DATASET PROVIDED BY L I ET AL . [10]
+Source of Artifact
+IS
+PS
+CM
+Total
+ATD Indicator
+VioModObsTech
+22 (42)
+3 (10)
+9 (12)
+34 (64)23 (51)
+0 (0)
+0 (1)
+23 (52)
+# of ATD
+45 (93)
+3 (10)
+9 (13)
+57 (116)
+Dataset filtering and re-labeling – To improve the accu-
+racy of the dataset and minimize false positives, each author
+independently validated these ATD items using the Li et al.
+[23] classification framework. Instead of using Cohen’s kappa
+for inter-rater reliability, we included only those items that all
+three authors consistently labeled as true positives. Our study
+began with an initial set of 116 ATD items, this re-labeling
+process resulted in a final dataset of 57 ATD items: 45 from
+IS, 3 from PS, and 9 from CM.
+Selection of Violation of modularity ATD – The dataset
+comprises two subsets: Violation of modularity (VioMod)
+items and Using obsolete technology (ObsTech) items. As the
+focus of this work focuses solely on the VioMod subset, we
+included 22 items from IS, 3 from PS, and 9 from CM (see
+Table II).
+For each VioMod item, we attempted to locate the as-
+sociated commit hash in the repository. However, we could
+not find the corresponding hashes for 10 items and 2 items
+from IS and PS, respectively. Finally, this process successfully
+linked 12 ATD items from IS, 1 from PS, and 9 from CM
+to their corresponding commits. Since Li et al. [10] treated
+the summary, description, and comments within a single issue
+as separate debt items, we identified 4 duplicated ATD items
+originating from the same issue ID. To avoid redundancy,
+we included only one item from each unique issue ID. In
+summary, the final dataset used in this paper consists of 8
+items from IS, 1 from PS, and 9 from CM. The complete
+dataset is available in our replication package1 .
+Despite the limited number of identified ATD items, the
+study focuses on high-quality, architecture-relevant data de-
+rived from multiple textual sources, including CM, PS, and
+IS artifacts. Each ATD item has been carefully selected based
+on its clear association with architectural concerns, ensuring
+that the analysis remains directly relevant to the research
+question. This approach guarantees the validity of the ATD
+items, as they are representative of architectural issues rather
+than noise or irrelevant debt, thus maintaining the integrity of
+the dataset. From the 18 identified ATD items, we identified
+5,135 files affected in the introduction phase and 3,553 files
+in the payment phase, providing a robust basis for analyzing
+architectural impacts over time.
+Lifecycle analysis per ATD item – We followed a struc-
+tured approach to analyze each ATD item’s lifecycle, using
+the following steps:
+1) Retrieval and tracing: We began by gathering ATD
+items from IS, PS, and CM sources. Each item was
+traced back to its associated source code through its
+commit hashcode, enabling us to pinpoint when the ATD
+instances occurred.
+2) Identification of ‘introduction’ and ‘payment’ moments:
+Using git log, we extracted both the code changes
+and their corresponding commit messages. To identify
+the moment of introduction, we used git blame
+to trace the initial addition of ATD-related code in
+the repository, such as when workarounds were intro-
+duced or new components (e.g., functions or classes)
+were added without proper documentation or unit tests.
+The moment of payment was determined by analyzing
+commits that addressed the ATD, such as removing
+workarounds, resolving modularity issues, or updating
+compatibility with frameworks or libraries [13]. This
+approach follows the steps outlined by Tan et al. [6],
+providing a complete view of the lifecycle of each item.
+1 https://doi.org/10.5281/zenodo.146972683) Historical state verification: With git checkout fol-
+lowed by a specific hashcode, we navigated to the
+repository’s historical state, reflecting the state of the
+project at ATD introduction and payment. This enabled
+verification of deployment changes over time.
+4) Calculation of ‘payment interval’: After identifying the
+ATD payment moment, we calculated the interval from
+introduction to payment by measuring the time between
+the initial commit date and the final commit date that
+addressed the ATD issue.
+5) Dependency analysis with FAN-IN and FAN-OUT met-
+rics: At both introduction and payment moments, we
+calculated the dependency changes using FAN-IN and
+FAN-OUT, measured with the Understand tool by Sci-
+tools [29]. This analysis helped us observe the impact
+of ATD on software complexity by tracking dependency
+structure changes between classes over time [20].
+6) Source code isolation: To avoid data complexity, we
+limited our analysis to ATD-affected files, excluding
+unrelated files from the dataset. Additionally, we focused
+exclusively on source code files, ommitting non-source
+files such as HTML, markdown, and text files, as they
+do not contribute to ATD-specific modifications.
+Comparison with Non-ATD items – To gain a more
+holistic understanding of the files, we randomly selected 18
+Non-ATD samples—referred to as Non-Debt items in Li et
+al. [10], provided we could locate their corresponding commit
+hash codes in the repository. We chose 18 items to match the
+number of ATD items analyzed, and to ensure a balanced com-
+parison. In addition, to differentiate the terms used for Non-
+ATD items, we substituted the ‘payment’ and ‘introduction’
+phases with the recorded and initial commit phases.
+A. Objectives and Research Questions
+This research aims to investigate the lifecycle of architecture
+technical debt from various source artifacts and analyze it
+employing the dependency (FAN-IN and FAN-OUT) approach
+[29]. Using the Goal-Question-Metric (GQM) [30] formula-
+tion, the objective is stated as follows:
+Analyze commit messages, pull requests, and issue
+tracking systems for the purpose of investigating
+the lifecycle of architecture technical debt items with
+respect to their introduction and payment phases,
+the number of changes between those phases, and
+the FAN-IN and FAN-OUT metrics of ATD-affected
+files from the point of view of software engineers
+in the context of open-source software.
+The goal can be further refined into the following two
+research questions (RQs):
+RQ1: How does architecture technical debt affect the con-
+nectivity of classes within the software system?
+Metrics associated: FAN-IN and FAN-OUT of the affected
+files and a software metric, i.e., source lines of code (SLOC)
+RQ2: How does the number of changes in files associated
+with ATD items correlate with dependencies and complexity?
+Metrics associated: Number of changes per file between intro-
+duction and payment, and FAN-IN, FAN-OUT, and cyclomatic
+complexity in the payment phase
+B. Tools and Technologies
+The tools and technologies used in the study are carefully
+chosen to handle different aspects of data extraction, analysis,
+and statistical evaluation. PyDriller [31] is employed to mine
+the Git commit history, such as the author of changes,
+timestamps, last known path, and the specific files affected.
+By using PyDriller, the introduction and payment dates of
+ATD items, as well as the initial commit and recorded dates
+of Non-ATD samples, can be traced accurately, and detailed
+commit-level data can be collected for further analysis.
+To calculate FAN-IN and FAN-OUT values of ATD and
+Non-ATD for the relevant classes, we utilize Understand by
+Scitools [29], a widely used static analysis tool known for its
+ability to parse and analyze code to provide detailed metrics.
+This tool allows for precise calculation of FAN-IN and FAN-
+OUT, which are key metrics for assessing the connectivity
+of classes. By obtaining these values at the introduction and
+payment stages of ATD, the study will be able to assess the
+impact of technical debt on class dependencies.
+Furthermore, Lizard2 is employed to automatically extract
+fundamental code metrics, including cyclomatic complexity,
+which quantifies the logical complexity of code. This tool
+examines source code to determine the number of independent
+paths within the program, offering an indication of the code’s
+complexity and potential challenges in terms of maintenance
+and comprehensibility.
+IV. R ESULTS - W ORKED EXAMPLE
+In this subsection, we illustrate our approach with a specific
+example of one ATD item identified in the issue tracking
+system, shortened as ATD #13 . This issue affected 33 Java
+files within the Apache Camel project and was linked to the
+repository via commit hash #77b260b64 . Table III provides
+a subset of six affected Java files, highlighting the key metrics
+FAN-IN and FAN-OUT, at both the debt introduction and
+repayment stages.
+Notably, during the repayment phase, three files
+(ChoiceBuilder.java, WhenBuilder.java, and
+ToBuilder.java) were removed, potentially reflecting
+a restructuring effort aimed at reducing complexity and
+improving maintainability. This change illustrates how debt
+repayment efforts can also modify the dependency structure,
+with certain files either removed or their dependencies altered.
+When files were deleted or their dependencies modified,
+FAN-IN and FAN-OUT data became unavailable. Excluding
+those removed files resulted in an unpaired dataset, which
+influenced our analytical approach. Given that the data
+does not follow a normal distribution, as confirmed by
+the Anderson-Darling [32] normality test, we employed
+2 https://github.com/terryyin/lizard
+3 Issue ID CAMEL-789, https://issues.apache.org/jira/browse/CAMEL-789
+4 https://github.com/apache/camel/commit/77b260b6the Mann-Whitney U test5 to evaluate the differences in
+FAN-IN and FAN-OUT values between the introduction and
+repayment phases.
+Additionally, to determine practical significance, we employ
+the effect sizes using Cliff’s delta (δ) as a measure to assess
+the impact on the modular structure and connectivity within
+the software system. Cliff’s δ [34] quantifies the standardized
+difference between two means, with values interpreted as
+follows: a negligible effect if |δ| < 0.147, a small effect if
+0.147 ≤ |δ| < 0.33, a medium effect if 0.33 ≤ |δ| < 0.474,
+and a large effect if |δ| ≥ 0.474.
+TABLE III
+S UBSET OF JAVA F ILES FROM ATD #1
+Introduction
+Filename
+.../Endpoint.java
+.../RuntimeCamelException.java
+.../processor/SendProcessor.java
+.../builder/ChoiceBuilder.java
+.../builder/WhenBuilder.java
+.../builder/ToBuilder.java
+Payment
+F-INF-OUTF-INF-OUT
+11
+2
+2
+2
+1
+10
+0
+2
+4
+6
+5196
+66
+6
+N/A
+N/A
+N/A5
+0
+9
+N/A
+N/A
+N/A
+Figure 1 illustrates the distribution of FAN-IN and FAN-
+OUT values at the ATD introduction and repayment, respec-
+tively. The statistical analysis indicates the rejection of the
+null hypothesis (H0 : ‘the values of FAN-IN during the ATD
+introduction and its payment come from the same distribution’)
+at α = 0.05. The directional test shows that we cannot reject
+the H1 : ‘the values of FAN-IN during repayment are larger
+than during introduction’, with the median growing from 0.69
+at the introduction to 2.01 at payment (p-value = 0.0002). As
+ATD was resolved, the files affected by this issue experienced
+an increase in dependency centralization. Cliff’s δ for FAN-IN,
+calculated at 0.5868, indicates a large effect size, suggesting
+that files affected by ATD experience a significant increase in
+FAN-IN in the payment compared to the introduction phase.
+Conversely, we could not reject the null hypothesis for
+the FAN-OUT (H0 : ‘the values of FAN-OUT during the
+ATD introduction and its repayment come from the same
+distribution’) at α = 0.05. This smaller shift in FAN-OUT,
+with Cliff’s δ of 0.1612 (i.e., a small size), suggests that while
+there is a slight increase in outgoing dependencies, the impact
+is less pronounced compared to FAN-IN.
+Analyzing ATD #1 from the Apache Camel project showed
+that resolving the debt increased incoming dependencies
+(FAN-IN), making the system more interconnected, while
+outgoing dependencies (FAN-OUT) changed only moderately.
+However, it is important to note that this increase in FAN-
+IN may not be solely attributable to the resolution of ATD; it
+could also be influenced by the natural evolution of the system
+over time or other unrelated factors.
+5 Mann-Whitney U statistical test [33] is a non-parametric statistical test
+suited for situations where data may not follow a normal distribution.
+V. R ESULTS - RQ1
+For all the items that were successfully identified as ATD
+instances from the VioMod indicator, we ran a similar analysis
+to the example shown above. Table IV summarizes the results
+for all the ATD and Non-ATD items in our dataset. Key
+observations are outlined below:
+TABLE IV
+S UMMARY OF FAN-IN AND FAN-OUT M ETRIC C HANGES
+ATD Items
+Non-ATD Items
+Metric% ChangeCliff’s δ% ChangeCliff’s δ
+Number of files
+FAN-IN (Avg.)
+FAN-IN (Max)
+FAN-OUT (Avg.)
+FAN-OUT (Max)-44.5%
++57.5%
++49.33%
++26.7%
++21.23%N/A
+0.1028
+N/A
+0.1213
+N/A-21.26%
++89.06%
++86.32%
++36.18%
++3.87%N/A
+0.2766
+N/A
+0.1805
+N/A
+File reductions: The number of files decreased for
+both ATD and Non-ATD items, but the reduction was
+greater for ATD items (44.5%) than for Non-ATD items
+(21.26%). This may indicate more substantial refactoring
+or removal of obsolete code in ATD-related efforts.
+• FAN-IN changes: Non-ATD items exhibited a larger
+average FAN-IN increase (+89.06%) compared to ATD
+items (+57.5%), with small vs. negligible effect sizes
+(0.2766 vs. 0.1028). This suggests that Non-ATD items
+experienced more pronounced increases in incoming de-
+pendencies over time.
+• FAN-OUT changes: Both ATD and Non-ATD items
+showed modest increases in FAN-OUT metrics, with
+Non-ATD items exhibiting slightly higher average in-
+creases (+36.18% vs. +26.7%). Effect sizes for FAN-OUT
+were negligible for ATD (0.1213) and small for Non-
+ATD (0.1805), suggesting minimal impact from ATD
+resolution but slightly noticeable structural shifts in Non-
+ATD items.
+• Extreme values: Maximum FAN-IN values increased
+similarly for ATD and Non-ATD items, while maximum
+FAN-OUT changes were minimal for Non-ATD items
+(+3.87%) but more notable for ATD items (+21.23%).
+•
+A. Statistical Analysis (complete sample)
+We conducted a comparative analysis to investigate the
+differences in FAN-IN and FAN-OUT metrics between ATD
+and Non-ATD items during the introduction and payment
+phases. This comparison aims to understand whether ATD
+items exhibit distinct patterns in dependency changes com-
+pared to Non-ATD items.
+When considering all the files contained in the ATD items6
+that are part of the complete ATD dataset, we observed p-
+values significantly lower than our standard threshold (α =
+0.05), and for both FAN-IN (p-value = 1.24 × 10−16 ) and
+6 As in Section IV, some FAN-IN and FAN-OUT values could not be
+recorded during the payment phase due to file deletions or merges. To maintain
+accuracy, these items were excluded, resulting in unpaired datasets analyzed
+with the Mann-Whitney U test.Median: 1.0
+12
+Frequency
+Frequency
+10
+8
+6
+4
+2
+0
+0
+2
+4
+6
+8
+Introduction FAN-IN
+10
+12
+8
+14
+0
+100
+200
+300
+Payment FAN-IN
+400
+500
+Median: 2.5
+8
+Frequency
+Frequency
+Median: 6.5
+10
+Median: 2.0
+6
+4
+2
+0
+14
+12
+10
+8
+6
+4
+2
+0
+6
+4
+2
+0
+2
+4
+6
+Introduction FAN-OUT
+8
+10
+0
+0
+5
+10
+15
+Payment FAN-OUT
+20
+Fig. 1. Data distribution of FAN-IN and FAN-OUT for ATD #1
+FAN-OUT (p-value = 5.05 × 10−22 ). Considering the set of
+all files affected by ATD, we rejected the two null hypotheses
+for FAN-IN and FAN-OUT, indicating in each case a statis-
+tically significant difference between the introduction and the
+payment phases.
+To understand whether this change is specific to ATD items
+or part of a general trend in the system, we conducted the
+same analysis on Non-ATD items. The results also showed
+statistically significant differences between the initial commit
+and recorded phases for FAN-IN, p-value is 4.78 × 10−19 , and
+for FAN-OUT, p-value is 7.49×10−09 . Since both p-values are
+well below the standard significance level α, we rejected the
+null hypothesis, indicating a significant difference in the FAN-
+IN and FAN-OUT metrics for Non-ATD items. The results for
+the ATD items are visualized in Figures 27 .
+For ATD items, the effect size on FAN-IN was evaluated as
+δ = 0.1028, indicating a negligible effect size. This suggests
+that the change in FAN-IN between the introduction and pay-
+ment phases is minimal, meaning that the resolution of ATD
+items had an insignificant impact on the number of incoming
+dependencies. Similarly, the effect size on FAN-OUT resulted
+in δ = 0.1213, which also represents a negligible effect size.
+While slightly higher than the effect size for FAN-IN, this
+result still suggests that the overall impact of ATD resolution
+on outgoing dependencies remains limited.
+In comparison, for Non-ATD items, the effect size on FAN-
+IN was δ = 0.2766, indicating a small effect size. This
+suggests that the change in FAN-IN between the recorded and
+initial commit phases for Non-ATD items is more pronounced
+than for ATD items. While still relatively small, it implies
+that Non-ATD items undergo more noticeable structural adjust-
+ments in their incoming dependencies. For FAN-OUT, Non-
+ATD items have an effect size of δ = 0.1805, which falls
+within the small effect range. This indicates that the change
+7 The figure uses log1p because this transformation effectively handles zero
+values present in the data, mapping them to zero (log(1) = 0). Without
+log1p, using a standard logarithmic transformation would be problematic, as
+it is undefined for zero values.
+in FAN-OUT between the recorded and initial commit phases
+for Non-ATD items, though minor, is more evident than for
+ATD items, suggesting some small but noticeable shifts in
+outgoing dependencies.
+The comparison between ATD and Non-ATD items high-
+lights that Non-ATD items exhibit a larger effect size for FAN-
+IN compared to ATD items (0.2766 vs. 0.1028), suggesting
+that incoming dependencies for Non-ATD items experience
+greater variation over their lifecycle. Similarly, for FAN-OUT,
+Non-ATD items show a slightly larger effect size than ATD
+items (0.1805 vs. 0.1213), indicating that changes in outgoing
+dependencies are also slightly more noticeable. Overall, these
+results suggest that ATD resolution has a minimal impact on
+the structural dependencies of the software system, whereas
+Non-ATD items show small but more noticeable structural
+shifts.
+B. Statistical Analysis (Individual ATD items)
+After evaluating above the overall ATD sample, in this
+section, we evaluate each ATD item in detail: Table V reports
+the Mann–Whitney U test results for each ATD item, com-
+paring FAN-IN and FAN-OUT between the introduction and
+repayment phases. Results in parentheses represent the FAN-
+IN and FAN-OUT metrics normalized by SLOC, which offer
+a more balanced assessment of connectivity by accounting
+for differences in code size. For example, we recorded ‘Y
+(Y)’ for the FAN-IN of the ATD #1 item to summarize that
+we could reject the null hypothesis H0 in both cases (e.g.,
+‘base’ and ‘normalized’ FAN-IN values). For the FAN-OUT
+of the same ATD item, we recorded ‘N (N)’ as in both cases,
+we could not reject the null hypothesis. It is important to
+notice that a statistically significant difference (p-value < 0.05,
+recorded as ‘Y’) suggests that the ATD item likely influenced
+the connectivity metric, whereas a lack of significance (p-value
+≥ 0.05, recorded as ‘N’) indicates stability in connectivity,
+despite the presence and resolution of the ATD item.
+For FAN-IN, the statistical tests for most items resulted in
+p-values ≥ 0.05, meaning that we could not reject the null1500
+Median: 1.10
+1000
+750
+500
+0
+1
+2
+3
+4
+5
+log(Introduction FAN-IN + 1)
+6
+600
+400
+0
+7
+Median: 1.79
+600
+400
+0
+1
+2
+3
+4
+5
+6
+log(Payment FAN-IN + 1)
+400
+Distribution
+Distribution
+800
+7
+8
+Median: 1.95
+300
+200
+100
+200
+0
+800
+200
+250
+0
+Median: 1.39
+1000
+Distribution
+Distribution
+1250
+0
+1
+2
+3
+4
+log(Introduction FAN-OUT + 1)
+5
+0
+0
+1
+2
+3
+4
+log(Payment FAN-OUT + 1)
+5
+Fig. 2. Distribution of FAN-IN and FAN-OUT: Introduction vs. Payment Phases of the ATD items
+TABLE V
+M ANN –W HITNEY U TEST p- VALUE FOR EACH ATD I TEM BETWEEN I TS
+PAYMENT AND I NTRODUCTION
+ATD
+#1
+#2
+#3
+#4
+#5
+#6
+#7
+#8
+#9
+#10
+#11
+#12
+#13
+#14
+#15
+#16
+#17
+#18
+FAN-IN (FAN-IN/SLOC)
+FAN-OUT (FAN-OUT/SLOC)
+Y (Y)
+N (N)
+N (N)
+N (N)
+− (−)
+− (−)
+N (N)
+N (N)
+N (N)
+N (N)
+− (−)
+− (−)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+Y (Y)
+N (N)
+Y (N)
+N (Y)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+Y (N)
+Y (N)
+Y (N)
+Y (N)
+N (N)
+N (N)
+(Y for p-value < 0.05; N for p-value > 0.05)
+hypothesis for these items. This implies that no statistically
+significant difference was observed in incoming connections
+(relative to SLOC) between the introduction and payment
+phases, suggesting stability in the FAN-IN metric for these
+ATD items. However, when the p-values were < 0.05, allowing
+us to reject the null hypothesis, the resolution of these specific
+ATD items (for example items #1 and #10) affected the
+incoming connectivity of the code, potentially indicating a
+structural or architectural shift. In all the cases where the null-
+hypothesis was rejected, we detected a significative direction
+in the relationship: the repayment values are typically higher
+than the introduction values.
+For ATD items #11, the FAN-IN metric differs between base
+and normalized values: the base metric shows a significant
+difference (Y), indicating that absolute incoming connections
+changed between introduction and payment phases. When
+normalized by SLOC (FAN-IN/SLOC), there is no significant
+difference (N), suggesting proportional changes to code size,
+keeping connectivity density stable. In contrast, FAN-OUT
+results show no significant difference in base terms (N), but
+a significant difference (Y) when normalized, indicating total
+outgoing connections were stable while connectivity density
+per line of code was affected by ATD resolution.
+ATD items #16 and #17 also display differences between
+base and normalized metrics for both FAN-IN and FAN-OUT.
+The base FAN-IN and FAN-OUT metrics display significant
+differences (denoted by Y), while the normalized metrics show
+no significant differences (denoted by N). This implies that
+the observed connectivity changes were proportional to the
+code size, and thus, when normalized, they no longer appear
+statistically significant.
+For ATD items #3 and #6, the symbol ‘–’ indicates a unique
+case where only folders, not specific files, were referenced. As
+a result, we could not calculate file-specific metrics like FAN-
+IN, FAN-OUT, or complexity, leading to their exclusion from
+parts of the analysis.
+Meanwhile, Table VI presents the results of the
+Mann–Whitney U test for each Non-ATD item, comparing
+FAN-IN and FAN-OUT values between the recorded and
+initial commit phases. Like the ATD items, this analysis
+assesses whether there are statistically significant changes in
+connectivity metrics, both in absolute terms and normalized
+by SLOC. For most Non-ATD items, the results show no
+significant differences in either FAN-IN or FAN-OUT, both
+in base and normalized metrics. However, there are notable
+exceptions for Non-ATD items #14 and #15 that show
+a significant difference in base FAN-IN metric (denoted
+by Y), indicating that this item affected both incoming
+connections. Interestingly, when normalized by SLOC, these
+differences remain significant, suggesting a substantial change
+in connectivity density as well as absolute connectivity.
+Additionally, Non-ATD items #14 and #15 display a sig-
+nificant difference in the base FAN-OUT metric (denoted
+by Y), while the normalized FAN-OUT/SLOC metric showsno significant difference (denoted by N). This suggests that
+although the absolute outgoing connections changed, these
+changes were proportional to the size of the code, leaving
+the connectivity density unaffected after normalization.
+We conducted Mann-Whitney U tests to evaluate the signifi-
+cance of the observed changes: both ATD and Non-ATD items
+showed statistically significant differences in FAN-IN and
+FAN-OUT metrics between the phases. However, effect size
+analysis revealed that these differences were generally small
+for both categories, with Non-ATD items having slightly larger
+effect sizes for FAN-IN. This suggests that while connectivity
+changes occur across the system, the structural impact of ATD
+resolution is modest.
+N = 5135
+ATD
+0
+N = 753
+Non-ATD
+0
+#1
+#2
+#3
+#4
+#5
+#6
+#7
+#8
+#9
+#10
+#11
+#12
+#13
+#14
+#15
+#16
+#17
+#18N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+Y (Y)
+Y (N)
+Y (Y)
+Y (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+N (N)
+(Y for p-value < 0.05; N for p-value > 0.05)
+200
+300
+Values
+400
+500
+TABLE VII
+C HANGES S TATISTIC OF ATD VS N ON -ATD I TEMS
+M ANN –W HITNEY U TEST p- VALUE FOR EACH N ON -ATD I TEM BETWEEN
+I T ’ S R ECORDED VS I NITIAL COMMIT
+FAN-IN (FAN-IN/SLOC)
+100
+Fig. 3. Boxplot of Number of Changes: ATD vs. Non-ATD Files
+TABLE VI
+Non-ATD
+100 200 300 400 500 600 700 800
+MetricATDNon-ATD
+Avg. change
+Median change
+Min. change
+Max. change
+Std. deviation6.981
+2.0
+0
+811
+20.93516.115
+7.0
+1
+532
+30.320
+FAN-OUT (FAN-OUT/SLOC)
+Answer to RQ1
+ATD repayment raises class connectivity: FAN-IN increased
+by 57.5% and FAN-OUT by 26.7%, centralizing dependen-
+cies and mildly increasing architectural complexity. In com-
+parison, Non-ATD items exhibit a more significant average
+FAN-IN increase of 89.06% and a FAN-OUT increase of
+36.18%.
+VI. R ESULTS - RQ2
+In order to answer RQ2, we analyzed the frequency of
+modifications in ATD-related files compared to Non-ATD files.
+Our study focused on 18 ATD items, tracking the dates of their
+initial introduction and final repayment using the git blame
+tool. We then counted modifications within these timeframes
+to assess code volatility, as illustrated in Figure 3.
+The analysis of changes in ATD-related files versus Non-
+ATD files reveals a clear distinction in modification frequency.
+As shown in Table VII, our results indicated that ATD-related
+files underwent significantly fewer frequent modifications,
+with an average of 6.981 changes per file (SD = 20.935),
+compared with Non-ATD with an average of 16.115 changes
+per file (SD = 30.320).
+A. Correlation between Dependencies, Complexity, and Num-
+ber of Changes
+To investigate whether the number of changes plays a role
+in the increase or decrease of connectivity metrics (FAN-IN
+and FAN-OUT) and complexity, we measure Partial Spear-
+man’s Correlation r [35] between FAN-IN and FAN-OUT,
+cyclomatic complexity, and the number of changes, while
+controlling for source lines of code (SLOC) for both ATD and
+Non-ATD items. Controlling for SLOC is essential because
+larger files typically exhibit higher complexity and connectiv-
+ity metrics simply due to their size. Without accounting for
+SLOC, it becomes challenging to determine whether observed
+changes in FAN-IN, FAN-OUT, or cyclomatic complexity are
+due to genuine structural or architectural modifications or are
+merely artifacts of an increase in file size.
+By measuring partial correlations rather than simple Spear-
+man correlations, we account for SLOC’s influence on con-
+nectivity, complexity, and change metrics. By controlling for
+SLOC, we can isolate the relationships among connectivity,
+complexity, and the number of changes, ensuring that any ob-
+served correlations more accurately reflect structural dynamics
+rather than variations in code size alone.
+TABLE VIII
+PARTIAL S PEARMAN ’ S C ORRELATION BETWEEN FAN-IN, FAN-OUT,
+C YCLOMATIC C OMPLEXITY AND N UMBER OF C HANGES WHILE
+C ONTROLLING SLOC
+MetricCoefficient r
+FAN-IN
+FAN-OUT
+Complexity0.241
+0.175
+-0.089
+FAN-IN
+FAN-OUT
+Complexity0.298
+0.533
+0.313
+CI95%p-value
+[0.21, 0.27]
+[0.14, 0.21]
+[-0.12, -0.06]<0.001
+<0.001
+<0.001
+ATD
+Non-ATD
+[0.22, 0.37]
+[0.47, 0.59]
+[0.24, 0.38]
+<0.001
+<0.001
+<0.001
+Table VIII presents Partial Spearman’s correlation coeffi-cients (r) between connectivity metrics (FAN-IN and FAN-
+OUT), cyclomatic complexity, and the number of changes,
+while controlling for SLOC for both ATD and Non-ATD items.
+This analysis provides insights into the relationships between
+structural metrics and change frequency in code, highlighting
+differences in correlation patterns of ATD and Non-ATD items.
+For ATD items, there is a positive and statistically signifi-
+cant correlation between FAN-IN and the number of changes
+(r = 0.241, Confidence Interval (CI95%) = [0.21, 0.27],
+p < 0.001). This indicates that as incoming dependencies
+(FAN-IN) increase, the frequency of changes to the code also
+tends to increase. FAN-OUT also shows a positive correlation
+with the number of changes (r = 0.175, CI95% = [0.14,
+0.21], p < 0.001), though the strength of this relationship
+is slightly weaker than for FAN-IN. Cyclomatic complexity,
+on the other hand, exhibits a negative correlation with the
+number of changes (r = −0.089, CI95% = [-0.12, -0.06],
+p < 0.001), suggesting that more complex ATD items may
+be less frequently modified, possibly due to the challenges
+associated with modifying highly complex code [36], [37].
+In contrast, Non-ATD items show a stronger positive cor-
+relation between FAN-IN and the number of changes (r =
+0.298, CI95% = [0.22, 0.37], p < 0.001), indicating that
+incoming dependencies have a greater impact on change
+frequency in Non-ATD items compared to ATD items. FAN-
+OUT has an even stronger correlation with the number of
+changes (r = 0.533, CI95% = [0.47, 0.59], p < 0.001),
+suggesting that outgoing dependencies in Non-ATD items
+are closely associated with higher modification frequency.
+Additionally, cyclomatic complexity for Non-ATD items is
+positively correlated with the number of changes (r = 0.313,
+CI95% = [0.24, 0.38], p < 0.001), indicating that Non-ATD
+code is modified more frequently.
+Answer to RQ2
+ATD-related files experience fewer changes compared to
+Non-ATD files and show slightly weaker correlations with
+FAN-IN and FAN-OUT. Cyclomatic complexity is negatively
+correlated with changes in ATD files but positively correlated
+in Non-ATD files.
+VII. D ISCUSSION
+In this section, we discuss the implications of our findings
+for practitioners and researchers. Additionally, we address
+some key aspects of managing ATD: first, the limitations
+of natural language processing (NLP) methods in capturing
+structural ATD; second, how addressing ATD can enhance
+quality metrics but also increase architectural complexity by
+centralizing dependencies. Third, the limitations of FAN-IN
+and FAN-OUT at assessing the impact of ATD.
+A. Implications for practitioners
+Practitioners managing ATD should balance immediate
+quality improvements with the potential for increased de-
+pendencies that could impact future maintainability. Our re-
+sults show that while resolving ATD often enhances software
+quality in the short term, it can also centralize dependen-
+cies, creating more tightly coupled architectures. This shift
+introduces layers of complexity, which may lead to long-term
+maintenance challenges. Practitioners should therefore adopt
+a holistic approach that considers both immediate benefits and
+potential future implications.
+Dependency analysis offers a practical approach for under-
+standing and monitoring ATD’s impact on system architecture.
+Metrics such as FAN-IN and FAN-OUT can help identify
+“hotspots” where ATD resolution has led to increased com-
+plexity, indicating areas that may require continuous attention
+even after the debt is repaid. By analyzing these dependency
+concentrations, practitioners can ensure that short-term quality
+improvements do not inadvertently compromise modularity
+and system scalability.
+Tracking ATD is inherently complex, and practitioners
+should consider structured approaches, ideally leveraging au-
+tomated tools to improve the accuracy of ATD identification
+and prioritization. Such automation facilitates more effective
+ATD management by providing a comprehensive view of
+architectural dependencies and complexities over time.
+B. Implications for researchers
+Our research used a dataset filtered for high-confidence
+ATD instances, yet the sample size remained limited. Future
+studies could expand on this work by incorporating a larger
+and more diverse set of open-source and industry-specific
+projects. A broader dataset would allow for cross-comparison
+across different software architectures, project scales, and
+development environments. This could reveal more nuanced
+patterns in ATD propagation, resolution, and its impact on
+system architecture.
+Our use of FAN-IN and FAN-OUT metrics provided valu-
+able insights into ATD’s effect on class connectivity. However,
+these metrics alone may not fully capture the complexity of
+ATD’s influence. Researchers could explore additional metrics,
+such as architectural smells, coupling, cohesion, or other
+graph-based measures, to develop a more comprehensive view
+of ATD’s impact on software architecture. Enhanced metrics
+might offer a more detailed characterization of ATD-related
+changes and assist in developing predictive models for ATD
+accumulation and its structural implications.
+C. Key aspects of managing ATD
+Challenges in ATD detection: Accurately identifying
+ATD remains a complex task. Although NLP techniques have
+proven effective in detecting SATD through textual indicators
+in code comments, commit messages, and issue sections [4],
+[10], [38], they may not fully capture the intricacies of archi-
+tectural technical debt. These methods often struggle to capture
+the more abstract, structural nature of ATD, which is not
+always explicitly documented or self-admitted. Architectural
+debt may emerge subtly, through dependencies, code organi-
+zation, and design decisions that NLP alone may not detect.
+This challenge suggests the need for an integrated approachthat combines NLP with architectural analysis techniques to
+better identify and track ATD within evolving systems.
+Although ATD represents only a small fraction of technical
+debt, this study shows the challenges of analyzing high-
+confidence ATD items in real-world projects, which under-
+scores the value of the dataset. With 18 ATD and 18 Non-ATD
+items, the research is a solid foundation for further exploration.
+As a proof of concept, it demonstrates the relationship between
+ATD and class connectivity using FAN-IN and FAN-OUT
+metrics, offering meaningful insights into ATD’s lifecycle and
+its impact on software architecture.
+ATD resolution and complexity trade-offs: Resolving
+ATD is generally aimed at enhancing software quality by
+addressing accumulated issues that degrade the architecture
+over time. However, our findings indicate that while resolving
+ATD can improve immediate quality metrics, it may also
+inadvertently centralize dependencies within the system. This
+centralization can lead to increased architectural complexity
+as dependencies converge around fewer core components.
+As a result, there is a trade-off between the immediate
+benefits of quality improvement and the potential long-term
+consequences of connectivity and dependency issues. These
+changes, although addressing current ATD, might introduce
+new structural challenges that affect future maintainability and
+the system’s modularity.
+Limitations of dependency metrics: While FAN-IN and
+FAN-OUT metrics provide valuable insights into the connec-
+tivity and dependency structure affected by ATD, they do
+not fully capture the scope of architectural complexity. These
+metrics measure the inflow and outflow of dependencies within
+classes or modules, offering a useful perspective on modularity
+and cohesion changes (which are central in the Violation of
+Modularity ATD). However, they lack the depth needed to
+reveal more intricate architectural dependencies, such as indi-
+rect couplings or nuanced inter-module relationships that could
+affect maintainability. FAN-IN and FAN-OUT metrics can
+therefore serve as preliminary indicators of ATD’s impact but
+should be complemented with additional architectural metrics
+or qualitative assessments for a more complete analysis.
+D. Threats to validity
+Internal validity: One of such threats is related to the tool
+used for extracting dependencies between files (Understand
+by Scitools). However, the results may vary if a different
+static analysis tool was used, as each tool may interpret and
+export dependencies in slightly different ways. Investigating
+and analyzing these differences among various dependency
+analysis tools is planned as part of our future work.
+External validity: The study relies on a limited dataset of
+18 ATD and 18 Non-ATD items. While this ensures a detailed
+analysis, and it is the complete set of ATD items from [23],
+it may not capture patterns present in larger or more diverse
+datasets from different types of software projects. To mitigate
+this limitation, we published both the dataset and the methods
+in a replication package8 , encouraging other researchers to
+8 https://doi.org/10.5281/zenodo.14697268
+validate and extend our findings using their own datasets.
+Construct validity: Our study relies on previously labeled
+ATD items from textual artifacts, which may include misclassi-
+fications due to subjective judgment. The dependency analysis
+also assumes that increases in FAN-IN and FAN-OUT metrics
+accurately reflect the presence of ATD, which may not account
+for all complexity factors in software architecture. To reduce
+the risk of misclassification, we independently validated a
+subset of ATD items and cross-verified classifications using
+multiple reviewers. Additionally, we used metrics such as cy-
+clomatic complexity to complement FAN-IN and FAN-OUT,
+providing a broader perspective on architectural dependencies.
+VIII. C ONCLUSION
+This study investigated the detection, lifecycle, and im-
+pact of ATD, with particular attention to the evolution of
+dependency structures. By analyzing ATD instances from their
+introduction to repayment, our findings reveal that addressing
+ATD often increases connectivity, with resolved ATD items
+showing higher levels of incoming dependencies (FAN-IN)
+and, to a lesser degree, outgoing dependencies (FAN-OUT).
+This trend suggests that, while ATD repayment may improve
+immediate code quality and modularity, it can also lead to
+the centralization of dependencies, increasing architectural
+complexity and introducing potential future maintenance chal-
+lenges. Despite these shifts, the effect sizes were negligible,
+indicating that ATD resolution may not have a substantial
+impact on the modular structure and connectivity between files
+in the system.
+This research shows the need for a more nuanced ap-
+proach to ATD management: differently from simpler forms of
+technical debt, ATD affects core structural elements, making
+it difficult to detect, assess, and mitigate without impacting
+broader architectural aspects. Effective ATD management must
+account for dependency patterns and long-term implications
+for maintainability: dependency metrics, such as FAN-IN and
+FAN-OUT, provide valuable insights but should ideally be
+complemented by additional architectural measures to capture
+the full scope of ATD’s impact on system stability.
+Future work should validate these findings across a broader
+dataset and potentially incorporate additional architectural
+metrics to better understand ATD’s impact on system structure.
+While this study analyzed 18 ATD and 18 Non-ATD items,
+the methodology developed here can be extended to larger
+datasets, providing a foundation for further exploration.
+This research serves as a proof of concept, highlighting
+the relationship between ATD and class connectivity through
+FAN-IN and FAN-OUT metrics. Expanding the sample size
+in future studies could reveal whether the observed patterns
+hold true across diverse systems and a larger set of ATD
+items. Additionally, extending this work could offer insights
+into ATD’s specific effects on various types of software
+architecture, further refining best practices for technical debt
+management in complex systems.R EFERENCES
+[1] W. Cunningham, “The wycash portfolio management system,” ACM
+Sigplan Oops Messenger, vol. 4, no. 2, pp. 29–30, 1992.
+[2] P. Avgeriou, P. Kruchten, I. Ozkaya, and C. Seaman, “Managing
+technical debt in software engineering (dagstuhl seminar 16162),” in
+Dagstuhl reports, vol. 6, no. 4. Deutsch: Schloss Dagstuhl-Leibniz-
+Zentrum fuer Informatik, 2016.
+[3] A. Potdar and E. Shihab, “An exploratory study on self-admitted
+technical debt,” in 2014 IEEE International Conference on Software
+Maintenance and Evolution. IEEE, 2014, pp. 91–100.
+[4] E. Sutoyo, P. Avgeriou, and A. Capiluppi, “Deep learning and data
+augmentation for detecting self-admitted technical debt,” arXiv preprint
+arXiv:2410.15804, 2024.
+[5] E. da Silva Maldonado, E. Shihab, and N. Tsantalis, “Using natural
+language processing to automatically detect self-admitted technical
+debt,” IEEE Transactions on Software Engineering, vol. 43, no. 11, pp.
+1044–1062, 2017.
+[6] J. Tan, D. Feitosa, and P. Avgeriou, “The lifecycle of technical debt
+that manifests in both source code and issue trackers,” Information and
+Software Technology, vol. 159, p. 107216, 2023.
+[7] T. Besker, A. Martini, and J. Bosch, “Impact of architectural technical
+debt on daily software development work—a survey of software practi-
+tioners,” in 2017 43rd Euromicro Conference on Software Engineering
+and Advanced Applications (SEAA). IEEE, 2017, pp. 278–287.
+[8] ——, “A systematic literature review and a unified model of atd,”
+in 2016 42th Euromicro Conference on Software Engineering and
+Advanced Applications (SEAA). IEEE, 2016, pp. 189–197.
+[9] V. Lenarduzzi, T. Besker, D. Taibi, A. Martini, and F. A. Fontana, “A
+systematic literature review on technical debt prioritization: Strategies,
+processes, factors, and tools,” Journal of Systems and Software, vol. 171,
+p. 110827, 2021.
+[10] Y. Li, M. Soliman, and P. Avgeriou, “Automatic identification of self-
+admitted technical debt from four different sources,” Empirical Software
+Engineering, vol. 28, no. 3, pp. 1–38, 2023.
+[11] X. Han, A. Tahir, P. Liang, S. Counsell, K. Blincoe, B. Li, and
+Y. Luo, “Code smells detection via modern code review: A study of
+the openstack and qt communities,” Empirical Software Engineering,
+vol. 27, no. 6, p. 127, 2022.
+[12] A. Martini and J. Bosch, “The danger of architectural technical debt:
+Contagious debt and vicious circles,” in 2015 12th Working IEEE/IFIP
+Conference on Software Architecture. IEEE, 2015, pp. 1–10.
+[13] R. Verdecchia, P. Kruchten, and P. Lago, “Architectural technical debt: A
+grounded theory,” in Software Architecture: 14th European Conference,
+ECSA 2020, L’Aquila, Italy, September 14–18, 2020, Proceedings 14.
+Springer, 2020, pp. 202–219.
+[14] P. C. Avgeriou, D. Taibi, A. Ampatzoglou, F. A. Fontana, T. Besker,
+A. Chatzigeorgiou, V. Lenarduzzi, A. Martini, A. Moschou, I. Pigazzini
+et al., “An overview and comparison of technical debt measurement
+tools,” Ieee software, vol. 38, no. 3, pp. 61–71, 2020.
+[15] E. Sutoyo and A. Capiluppi, “Development and adoption of satd detec-
+tion tools: A state-of-practice report,” arXiv preprint arXiv:2412.14217,
+2024.
+[16] M. Claes, A. Decan, and T. Mens, “Intercomponent dependency issues
+in software ecosystems,” Software Technology: 10 Years of Innovation
+in IEEE Computer, pp. 35–57, 2018.
+[17] T. Sharma, P. Mishra, and R. Tiwari, “Designite: A software design
+quality assessment tool,” in Proceedings of the 1st International Work-
+shop on Bringing Architectural Design Thinking into Developers’ Daily
+Activities, 2016, pp. 1–4.
+[18] A. Murgia, R. Tonelli, M. Marchesi, G. Concas, S. Counsell, J. McFall,
+and S. Swift, “Refactoring and its relationship with fan-in and fan-out:
+An empirical study,” in 2012 16th European Conference on Software
+Maintenance and Reengineering. IEEE, 2012, pp. 63–72.
+[19] E. Nasseri, S. Counsell, and E. Tempero, “An empirical study of fan-in
+and fan-out in java oss,” in 2010 Eighth ACIS International Conference
+on Software Engineering Research, Management and Applications.
+IEEE, 2010, pp. 36–41.
+[20] A. Mubarak, S. Counsell, and R. M. Hierons, “An evolutionary study
+of fan-in and fan-out metrics in oss,” in 2010 Fourth International
+Conference on Research Challenges in Information Science (RCIS).
+IEEE, 2010, pp. 473–482.
+[21] C. F. Kemerer, “Software complexity and software maintenance: A
+survey of empirical research,” Annals of Software Engineering, vol. 1,
+pp. 1–22, 1995.
+[22] N. S. Alves, L. F. Ribeiro, V. Caires, T. S. Mendes, and R. O.
+Spínola, “Towards an ontology of terms on technical debt,” in 2014
+sixth international workshop on managing technical debt. IEEE, 2014,
+pp. 1–7.
+[23] Y. Li, M. Soliman, and P. Avgeriou, “Identification and remediation of
+self-admitted technical debt in issue trackers,” in 2020 46th Euromicro
+conference on software engineering and advanced applications (SEAA).
+IEEE, 2020, pp. 495–503.
+[24] A. MacCormack and D. J. Sturtevant, “Technical debt and system
+architecture: The impact of coupling on defect-related activity,” Journal
+of Systems and Software, vol. 120, pp. 170–182, 2016.
+[25] A. Imran, “Design smell detection and analysis for open source java
+software,” in 2019 IEEE International Conference on Software Mainte-
+nance and Evolution (ICSME). IEEE, 2019, pp. 644–648.
+[26] Y.-y. Wang, Q.-s. Li, P. Chen, and C.-d. Ren, “Dynamic fan-in and fan-
+out metrics for program comprehension,” Journal of Shanghai University
+(English Edition), vol. 11, no. 5, pp. 474–479, 2007.
+[27] U. Vora, “Measuring the technical debt,” in 2022 17th Annual System of
+Systems Engineering Conference (SOSE). IEEE, 2022, pp. 185–189.
+[28] Y. Li, M. Soliman, and P. Avgeriou, “Identifying self-admitted technical
+debt in issue tracking systems using machine learning,” Empirical
+Software Engineering, vol. 27, no. 6, p. 131, 2022.
+[29] Understand, “Understand by scitools,” Scientific Toolworks, Inc, 444
+E Tabernacle Suite #B101 St George, UT 84770, 2024, software for
+scientific tools and analysis. [Online]. Available: http://www.scitools.org
+[30] R. Van Solingen, V. Basili, G. Caldiera, and H. D. Rombach, “Goal
+question metric (gqm) approach,” Encyclopedia of software engineering,
+2002.
+[31] D. Spadini, M. Aniche, and A. Bacchelli, PyDriller: Python Framework
+for Mining Software Repositories, 2018.
+[32] L. S. Nelson, “The anderson-darling test for normality,” Journal of
+Quality Technology, vol. 30, no. 3, pp. 298–299, 1998.
+[33] P. E. McKnight and J. Najab, “Mann-whitney u test,” The Corsini
+encyclopedia of psychology, pp. 1–1, 2010.
+[34] N. Cliff, Ordinal methods for behavioral data analysis. Psychology
+Press, 2014.
+[35] Spearman Rank Correlation Coefficient. New York, NY: Springer
+New York, 2008, pp. 502–505. [Online]. Available: https://doi.org/10.
+1007/978-0-387-32833-1_379
+[36] M. V. Mäntylä and C. Lassenius, “What types of defects are really dis-
+covered in code reviews?” IEEE Transactions on Software Engineering,
+vol. 35, no. 3, pp. 430–448, 2008.
+[37] M. Lopes and A. Hora, “How and why we end up with complex
+methods: a multi-language study,” Empirical Software Engineering,
+vol. 27, no. 5, p. 115, 2022.
+[38] Z. Codabux, M. Vidoni, and F. H. Fard, “Technical debt in the peer-
+review documentation of r packages: A ropensci case study,” in 2021
+IEEE/ACM 18th International Conference on Mining Software Reposi-
+tories (MSR). IEEE, 2021, pp. 195–206.
