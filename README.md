@@ -9,7 +9,7 @@ Implementation of the complete software platform based on the empirical research
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Activate Environment
 ```bash
@@ -32,7 +32,7 @@ atd-lens scan --path . --ext .java
 
 ---
 
-## 📁 Codebase Architecture (Implemented Checkpoint by Checkpoint)
+## Codebase Architecture (Implemented Checkpoint by Checkpoint)
 
 | Checkpoint | Module | Implementation Description | Test Suite |
 | :---: | :--- | :--- | :---: |
@@ -47,7 +47,7 @@ atd-lens scan --path . --ext .java
 
 ---
 
-## 📊 Replicated Empirical Findings
+## Replicated Empirical Findings
 
 1. **Repayment Paradox (Centralization):** Resolving ATD increases FAN-IN by an average of **+57.5%**, shifting incoming dependencies onto surviving central classes.
 2. **Code Avoidance:** ATD files are modified significantly less frequently (**6.98 avg changes** vs. **16.12** for Non-ATD files).
